@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.venv/
+venv/
+.env
+*.pt
+!models/.gitkeep
+outputs/*
+!outputs/.gitkeep
+assets/uploads/*
+!assets/uploads/.gitkeep
+.DS_Store
+Thumbs.db
+*.tmp
