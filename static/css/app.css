@@ -1,0 +1,78 @@
+/* Day08 智能内容审核工作台 — 暗色专业工具风 */
+
+/* ===== CSS 变量 ===== */
+:root {
+    --bg-primary: #1a1d23;
+    --bg-card: #21252b;
+    --bg-input: #2c313a;
+    --border: #333842;
+    --text-primary: #e1e4e8;
+    --text-secondary: #8b949e;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --pass: #22c55e;
+    --review: #f59e0b;
+    --reject: #ef4444;
+    --font-mono: 'Consolas', 'Courier New', monospace;
+}
+
+/* ===== 基础重置 ===== */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+/* ===== Header ===== */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+}
+
+.header-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ===== 按钮 ===== */
+.btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ===== 主布局 ===== */
+.main {
+    padding: 24px;
+}
+
+/* ===== 任务表格（预留） ===== */
+/* TODO: 前端团队成员实现 */
+
+/* ===== 审核工作台（预留） ===== */
+/* TODO: 前端团队成员实现 */
+
+/* ===== 弹窗（预留） ===== */
+/* TODO: 前端团队成员实现 */

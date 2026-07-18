@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能内容审核工作台 — Day08</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+    <!-- ===== 顶部导航 ===== -->
+    <header class="header">
+        <h1 class="header-title">🛡️ 智能内容审核工作台</h1>
+        <div class="header-actions">
+            <button id="btn-new-task" class="btn btn-primary">+ 新建审核任务</button>
+            <button id="btn-rules" class="btn btn-secondary">⚙ 规则配置</button>
+        </div>
+    </header>
+
+    <!-- ===== 主内容区 ===== -->
+    <main class="main" id="app-main">
+        <!-- 任务列表视图（默认） -->
+        <section id="view-task-list" class="view">
+            <!-- TODO: 前端团队成员实现 — 任务列表表格 + 状态仪表盘 -->
+        </section>
+
+        <!-- 审核工作台视图（点击任务进入） -->
+        <section id="view-review" class="view" style="display:none;">
+            <!-- TODO: 前端团队成员实现 — 审核工作台布局 -->
+        </section>
+    </main>
+
+    <!-- ===== 新建任务弹窗 ===== -->
+    <dialog id="modal-new-task">
+        <!-- TODO: 前端团队成员实现 — 上传表单 + 规则选择 -->
+    </dialog>
+
+    <!-- ===== 规则配置弹窗 ===== -->
+    <dialog id="modal-rules">
+        <!-- TODO: 前端团队成员实现 — 审核规则配置 -->
+    </dialog>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
