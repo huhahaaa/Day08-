@@ -62,8 +62,8 @@ function loadJobList() {
         }
         var html = '<table><thead><tr><th>任务ID</th><th>文件名</th><th>状态</th><th>结论</th><th></th></tr></thead><tbody>';
         data.forEach(function(j) {
-            var v = j.verdict || '待审核';
-            var tagClass = v === 'pass' ? 'tag-pass' : (v === 'review' ? 'tag-review' : (v === 'reject' ? 'tag-reject' : 'tag-created'));
+            var v = j.status === 'failed' ? '失败' : (j.verdict || '待审核');
+            var tagClass = j.status === 'failed' ? 'tag-failed' : (v === 'pass' ? 'tag-pass' : (v === 'review' ? 'tag-review' : (v === 'reject' ? 'tag-reject' : 'tag-created')));
             html += '<tr>' +
                 '<td class="job-id">' + j.job_id + '</td>' +
                 '<td>' + (j.asset_name || '-') + '</td>' +
@@ -92,8 +92,8 @@ function viewJobDetail(jobId) {
     .then(function(r) { return r.json(); })
     .then(function(j) {
         var content = document.getElementById('detailContent');
-        var v = j.verdict || '待审核';
-        var tagClass = v === 'pass' ? 'tag-pass' : (v === 'review' ? 'tag-review' : (v === 'reject' ? 'tag-reject' : 'tag-created'));
+        var v = j.status === 'failed' ? '失败' : (j.verdict || '待审核');
+        var tagClass = j.status === 'failed' ? 'tag-failed' : (v === 'pass' ? 'tag-pass' : (v === 'review' ? 'tag-review' : (v === 'reject' ? 'tag-reject' : 'tag-created')));
 
         var html = '<div class="detail-grid">';
         html += '<div><strong>任务ID</strong><br>' + j.job_id + '</div>';
@@ -103,6 +103,10 @@ function viewJobDetail(jobId) {
         html += '<div><strong>创建时间</strong><br>' + (j.created_at || '-') + '</div>';
         html += '<div><strong>完成时间</strong><br>' + (j.completed_at || '-') + '</div>';
         html += '</div>';
+
+        if (j.status === 'failed' && j.error) {
+            html += '<div class="error-box"><strong>错误信息</strong><br>' + j.error + '</div>';
+        }
 
         // 显示原始素材预览
         if (j.asset_name) {

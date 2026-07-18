@@ -92,6 +92,16 @@ button {
 .tag-review { background: #fff3cd; color: #856404; }
 .tag-reject { background: #f8d7da; color: #721c24; }
 .tag-created { background: #e2e3e5; color: #383d41; }
+.tag-failed { background: #f8d7da; color: #dc3545; }
+
+.error-box {
+    background: #fff5f5;
+    border: 1px solid #ffebee;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 10px 0;
+    color: #dc3545;
+}
 
 .detail-grid {
     display: grid;

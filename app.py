@@ -94,9 +94,13 @@ def api_get_job(job_id):
 @app.route("/api/jobs/<job_id>", methods=["DELETE"])
 def api_delete_job(job_id):
     """删除任务（仅 completed/failed 可删）"""
-    success = jobs.delete_job(job_id)
-    if not success:
-        return jsonify({"ok": False, "error": "任务不存在或状态不允许删除"}), 400
+    job = jobs.get_job(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "任务不存在"}), 404
+    status = job.get("status")
+    if status not in ["completed", "failed"]:
+        return jsonify({"ok": False, "error": "无法删除运行中的任务"}), 409
+    jobs.delete_job(job_id)
     return jsonify({"ok": True})
 
 
