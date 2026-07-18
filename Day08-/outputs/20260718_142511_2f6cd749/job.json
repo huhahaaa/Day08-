@@ -1,0 +1,62 @@
+{
+  "job_id": "20260718_142511_2f6cd749",
+  "project_name": "审核任务",
+  "asset_name": "屏幕截图 2026-07-18 125632.png",
+  "status": "completed",
+  "created_at": "2026-07-18T14:25:11.999061",
+  "started_at": "2026-07-18T14:25:48.620849",
+  "completed_at": "2026-07-18T14:25:50.039374",
+  "settings": {
+    "risk_classes": [
+      "knife",
+      "scissors",
+      "baseball bat"
+    ],
+    "warning_classes": [
+      "bottle",
+      "wine glass",
+      "cell phone"
+    ],
+    "reject_confidence": 0.6,
+    "review_confidence": 0.35,
+    "min_evidence_frames": 1,
+    "video_sample_interval_sec": 1.0
+  },
+  "result_file": null,
+  "error": null,
+  "verdict": "pass",
+  "review": {
+    "original_verdict": "review",
+    "new_verdict": "pass",
+    "note": "asd",
+    "reviewer": "anonymous",
+    "reviewed_at": "2026-07-18T14:25:59.452204"
+  },
+  "result": {
+    "verdict": "review",
+    "reason": "检测到目标，最大置信度 0.78 处于待复核区间",
+    "risk_triggers": [],
+    "total_detections": 2,
+    "max_confidence": 0.782,
+    "settings": {
+      "risk_classes": [
+        "knife",
+        "scissors",
+        "baseball bat"
+      ],
+      "warning_classes": [
+        "bottle",
+        "wine glass",
+        "cell phone"
+      ],
+      "reject_confidence": 0.6,
+      "review_confidence": 0.35,
+      "min_evidence_frames": 1,
+      "video_sample_interval_sec": 1.0
+    },
+    "evidence_path": "evidence_20260718_142511_2f6cd749.jpg",
+    "evidence_filenames": [
+      "evidence_20260718_142511_2f6cd749.jpg"
+    ]
+  }
+}

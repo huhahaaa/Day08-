@@ -1,0 +1,53 @@
+{
+  "job_id": "20260718_141003_111a3c07",
+  "project_name": "审核任务",
+  "asset_name": "4.jpg",
+  "status": "completed",
+  "created_at": "2026-07-18T14:10:03.938366",
+  "started_at": "2026-07-18T14:11:54.900076",
+  "completed_at": "2026-07-18T14:11:56.559169",
+  "settings": {
+    "risk_classes": [
+      "knife",
+      "scissors",
+      "baseball bat"
+    ],
+    "warning_classes": [
+      "bottle",
+      "wine glass",
+      "cell phone"
+    ],
+    "reject_confidence": 0.6,
+    "review_confidence": 0.35,
+    "min_evidence_frames": 1,
+    "video_sample_interval_sec": 1.0
+  },
+  "result_file": null,
+  "error": null,
+  "verdict": "pass",
+  "review": null,
+  "result": {
+    "verdict": "pass",
+    "reason": "未检测到目标或规则目标",
+    "risk_triggers": [],
+    "total_detections": 0,
+    "max_confidence": 0.0,
+    "settings": {
+      "risk_classes": [
+        "knife",
+        "scissors",
+        "baseball bat"
+      ],
+      "warning_classes": [
+        "bottle",
+        "wine glass",
+        "cell phone"
+      ],
+      "reject_confidence": 0.6,
+      "review_confidence": 0.35,
+      "min_evidence_frames": 1,
+      "video_sample_interval_sec": 1.0
+    },
+    "evidence_path": "C:\\Users\\22382\\Desktop\\Day08-\\outputs\\20260718_141003_111a3c07\\evidence\\evidence_20260718_141003_111a3c07.jpg"
+  }
+}
