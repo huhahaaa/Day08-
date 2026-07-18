@@ -1,8 +1,0 @@
-{
-  "risk_classes": ["knife", "scissors", "baseball bat"],
-  "warning_classes": ["bottle", "wine glass", "cell phone"],
-  "reject_confidence": 0.60,
-  "review_confidence": 0.35,
-  "min_evidence_frames": 1,
-  "video_sample_interval_sec": 1.0
-}
