@@ -1,0 +1,59 @@
+{
+  "job_id": "20260718_135609_d1b0861e",
+  "project_name": "1",
+  "asset_name": "99.jpg",
+  "status": "completed",
+  "created_at": "2026-07-18T13:56:09.769638",
+  "started_at": "2026-07-18T14:12:32.539161",
+  "completed_at": "2026-07-18T14:12:32.756128",
+  "settings": {
+    "risk_classes": [
+      "knife",
+      "scissors",
+      "baseball bat"
+    ],
+    "warning_classes": [
+      "bottle",
+      "wine glass",
+      "cell phone"
+    ],
+    "reject_confidence": 0.6,
+    "review_confidence": 0.35,
+    "min_evidence_frames": 1,
+    "video_sample_interval_sec": 1.0
+  },
+  "result_file": null,
+  "error": null,
+  "verdict": "pass",
+  "review": {
+    "original_verdict": "review",
+    "new_verdict": "pass",
+    "note": "",
+    "reviewer": "anonymous",
+    "reviewed_at": "2026-07-18T14:12:45.642613"
+  },
+  "result": {
+    "verdict": "review",
+    "reason": "检测到 1 个目标，置信度较低",
+    "risk_triggers": [],
+    "total_detections": 1,
+    "max_confidence": 0.2711,
+    "settings": {
+      "risk_classes": [
+        "knife",
+        "scissors",
+        "baseball bat"
+      ],
+      "warning_classes": [
+        "bottle",
+        "wine glass",
+        "cell phone"
+      ],
+      "reject_confidence": 0.6,
+      "review_confidence": 0.35,
+      "min_evidence_frames": 1,
+      "video_sample_interval_sec": 1.0
+    },
+    "evidence_path": "C:\\Users\\22382\\Desktop\\Day08-\\outputs\\20260718_135609_d1b0861e\\evidence\\evidence_20260718_135609_d1b0861e.jpg"
+  }
+}
