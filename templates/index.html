@@ -3,42 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能内容审核工作台 — Day08</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    <title>智能内容审核工作台</title>
+    <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
-    <!-- ===== 顶部导航 ===== -->
-    <header class="header">
-        <h1 class="header-title">🛡️ 智能内容审核工作台</h1>
-        <div class="header-actions">
-            <button id="btn-new-task" class="btn btn-primary">+ 新建审核任务</button>
-            <button id="btn-rules" class="btn btn-secondary">⚙ 规则配置</button>
+    <div class="container">
+        <h1>🛡️ 智能内容审核工作台</h1>
+
+        <!-- 上传 -->
+        <div class="card">
+            <h2>📤 新建审核任务</h2>
+            <div class="upload-area">
+                <input type="file" id="fileInput" accept="image/*,video/*">
+                <input type="text" id="projectNameInput" placeholder="项目名称（可选）" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:200px;">
+                <button class="btn-primary" id="uploadBtn">📤 上传并创建任务</button>
+            </div>
+            <div id="uploadResult" class="result-area"></div>
         </div>
-    </header>
 
-    <!-- ===== 主内容区 ===== -->
-    <main class="main" id="app-main">
-        <!-- 任务列表视图（默认） -->
-        <section id="view-task-list" class="view">
-            <!-- TODO: 前端团队成员实现 — 任务列表表格 + 状态仪表盘 -->
-        </section>
+        <!-- 任务列表 -->
+        <div class="card">
+            <h2>📋 任务列表 <button class="btn-secondary" id="refreshBtn" style="font-size:12px;">🔄 刷新</button></h2>
+            <div id="jobList" class="job-list">
+                <p style="color:#999;">加载中...</p>
+            </div>
+        </div>
 
-        <!-- 审核工作台视图（点击任务进入） -->
-        <section id="view-review" class="view" style="display:none;">
-            <!-- TODO: 前端团队成员实现 — 审核工作台布局 -->
-        </section>
-    </main>
+        <!-- 任务详情 -->
+        <div class="card hidden" id="detailCard">
+            <h2>📄 任务详情</h2>
+            <div id="detailContent"></div>
+            <div class="btn-group">
+                <button class="btn-primary" id="analyzeBtn">▶ 启动审核</button>
+                <button class="btn-secondary" id="downloadReportBtn">📄 下载报告</button>
+                <button class="btn-secondary" id="downloadEvidenceBtn">🖼️ 下载证据</button>
+                <button class="btn-danger" id="deleteJobBtn">🗑️ 删除任务</button>
+            </div>
+            <div id="detailResult" class="result-area"></div>
+        </div>
 
-    <!-- ===== 新建任务弹窗 ===== -->
-    <dialog id="modal-new-task">
-        <!-- TODO: 前端团队成员实现 — 上传表单 + 规则选择 -->
-    </dialog>
+        <!-- 人工复核 -->
+        <div class="card hidden" id="reviewCard">
+            <h2>✏️ 人工复核</h2>
+            <div class="btn-group">
+                <button class="btn-success" id="reviewPassBtn">✅ 通过</button>
+                <button class="btn-warning" id="reviewReviewBtn">🔍 待复核</button>
+                <button class="btn-danger" id="reviewRejectBtn">❌ 不通过</button>
+            </div>
+            <input type="text" id="reviewNote" placeholder="复核备注（可选）" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;margin-top:10px;">
+            <div id="reviewResult" class="result-area"></div>
+        </div>
+    </div>
 
-    <!-- ===== 规则配置弹窗 ===== -->
-    <dialog id="modal-rules">
-        <!-- TODO: 前端团队成员实现 — 审核规则配置 -->
-    </dialog>
-
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="/static/js/app.js"></script>
 </body>
 </html>

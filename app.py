@@ -40,6 +40,8 @@ def api_health():
         "status": "ok",
         "model_ready": cv.is_ready(),
         "model_name": cv.model_name,
+        "model_names": cv.model_names,
+        "extra_model_errors": cv.extra_model_errors,
     })
 
 
@@ -52,11 +54,12 @@ def api_create_job():
     file = request.files['file']
     if file.filename == '':
         return jsonify({"ok": False, "error": "文件名为空"}), 400
+    filename = Path(file.filename).name
 
     # 保存上传文件到临时目录
     upload_dir = BASE_DIR / "uploads"
     upload_dir.mkdir(exist_ok=True)
-    temp_path = upload_dir / file.filename
+    temp_path = upload_dir / filename
     file.save(str(temp_path))
 
     # 创建任务
@@ -99,9 +102,28 @@ def api_delete_job(job_id):
 
 # ========== 方向 A 专属 API ==========
 
+import threading
+
+def _run_analysis(job_id: str):
+    """后台执行 CV 分析，完成后自动写入结果。"""
+    try:
+        input_path = jobs.get_input_path(job_id)
+        if not input_path or not input_path.exists():
+            raise Exception("找不到输入文件")
+
+        job = jobs.get_job(job_id)
+        settings = job.get("settings", DEFAULT_RULES) if job else DEFAULT_RULES
+        result = cv.analyze_asset(input_path, jobs.get_job_dir(job_id), settings)
+        result["job_id"] = job_id
+        jobs.save_result(job_id, result)
+        jobs.update_status(job_id, "completed")
+    except Exception as e:
+        jobs.update_status(job_id, "failed", str(e))
+
+
 @app.route("/api/jobs/<job_id>/analyze", methods=["POST"])
 def api_analyze(job_id):
-    """触发 CV 审核分析（异步）"""
+    """触发 CV 审核分析（异步后台线程，立即返回）"""
     job = jobs.get_job(job_id)
     if not job:
         return jsonify({"ok": False, "error": "任务不存在"}), 404
@@ -109,61 +131,14 @@ def api_analyze(job_id):
     if job.get("status") in ["running", "completed"]:
         return jsonify({"ok": False, "error": "任务正在处理或已完成"}), 400
 
-    # 更新状态为运行中
     jobs.update_status(job_id, "running")
+    threading.Thread(target=_run_analysis, args=(job_id,), daemon=True).start()
 
-    try:
-        # 获取输入文件
-        input_path = jobs.get_input_path(job_id)
-        if not input_path or not input_path.exists():
-            raise Exception("找不到输入文件")
-
-        # 判断文件类型
-        ext = input_path.suffix.lower()
-        settings = job.get("settings", DEFAULT_RULES)
-
-        if ext in ['.jpg', '.jpeg', '.png']:
-            # 图片审核
-            detections = cv.detect_image(input_path)
-            result = cv.evaluate_rules(detections, settings)
-
-            # 绘制证据帧
-            evidence_dir = jobs.get_evidence_dir(job_id)
-            evidence_path = evidence_dir / f"evidence_{job_id}.jpg"
-            cv.draw_boxes(input_path, detections, evidence_path)
-            result["evidence_path"] = str(evidence_path)
-
-        elif ext in ['.mp4', '.avi', '.mov', '.mkv']:
-            # 视频审核
-            frame_results = cv.detect_video_frames(input_path, interval_sec=1.0, max_frames=30)
-            result = cv.evaluate_rules(frame_results, settings)
-
-            # 保存证据帧
-            evidence_dir = jobs.get_evidence_dir(job_id)
-            evidence_paths = []
-            for fr in frame_results[:5]:  # 最多保存5帧
-                # 需要从原视频提取帧保存，这里简化处理
-                # 完整实现可以用 OpenCV 读取并保存
-                pass
-            result["evidence_frames"] = evidence_paths
-
-        else:
-            raise Exception(f"不支持的文件类型: {ext}")
-
-        # 保存结果
-        jobs.save_result(job_id, result)
-        jobs.update_status(job_id, "completed")
-
-        return jsonify({
-            "ok": True,
-            "job_id": job_id,
-            "status": "completed",
-            "verdict": result.get("verdict", "unknown")
-        })
-
-    except Exception as e:
-        jobs.update_status(job_id, "failed", str(e))
-        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({
+        "ok": True,
+        "job_id": job_id,
+        "status": "running",
+    }), 202
 
 
 @app.route("/api/jobs/<job_id>/review", methods=["PATCH"])
@@ -191,24 +166,49 @@ def api_report(job_id):
     if not job:
         return jsonify({"ok": False, "error": "任务不存在"}), 404
 
-    report = {
-        "job_id": job_id,
-        "asset_name": job.get("asset_name"),
-        "status": job.get("status"),
-        "verdict": job.get("verdict"),
-        "result": job.get("result"),
-        "review": job.get("review"),
-        "created_at": job.get("created_at"),
-        "completed_at": job.get("completed_at")
-    }
+    report_path = jobs.get_report_path(job_id)
+    if not report_path.exists():
+        return jsonify({"ok": False, "error": "报告不存在"}), 404
 
-    # 保存报告文件
-    report_dir = jobs._get_job_dir(job_id)
-    report_path = report_dir / "report.json"
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
+    if request.args.get("download") == "1":
+        return send_file(report_path, as_attachment=True, download_name=f"{job_id}_analysis_report.json")
 
-    return send_file(report_path, as_attachment=True, download_name=f"{job_id}_report.json")
+    with open(report_path, "r", encoding="utf-8") as f:
+        report = json.load(f)
+    return jsonify({"ok": True, "report": report})
+
+
+@app.route("/api/jobs/<job_id>/input/<asset_name>", methods=["GET"])
+def api_input_file(job_id, asset_name):
+    """预览原始素材（图片或视频）"""
+    job = jobs.get_job(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "任务不存在"}), 404
+    file_path = jobs.get_job_dir(job_id) / "input" / asset_name
+    if not file_path.exists():
+        return jsonify({"ok": False, "error": "文件不存在"}), 404
+
+    # 视频需要 Range 请求支持（206 Partial Content），否则浏览器无法拖动进度条
+    suffix = file_path.suffix.lower()
+    if suffix in {".mp4", ".webm", ".ogg"}:
+        return send_file(file_path, mimetype=f"video/{suffix[1:]}", conditional=True)
+    if suffix in {".mkv"}:
+        return send_file(file_path, mimetype="video/x-matroska", conditional=True)
+    if suffix in {".avi"}:
+        return send_file(file_path, mimetype="video/x-msvideo", conditional=True)
+    if suffix in {".mov"}:
+        return send_file(file_path, mimetype="video/quicktime", conditional=True)
+    return send_file(file_path)
+
+
+@app.route("/api/jobs/<job_id>/evidence/<fname>", methods=["GET"])
+def api_evidence_file(job_id, fname):
+    """查看单张证据图片"""
+    evidence_dir = jobs.get_evidence_dir(job_id)
+    file_path = evidence_dir / fname
+    if not file_path.exists():
+        return jsonify({"ok": False, "error": "证据文件不存在"}), 404
+    return send_file(file_path)
 
 
 @app.route("/api/jobs/<job_id>/evidence", methods=["GET"])
@@ -219,7 +219,7 @@ def api_evidence(job_id):
         return jsonify({"ok": False, "error": "没有证据文件"}), 404
 
     import zipfile
-    zip_path = jobs._get_job_dir(job_id) / f"{job_id}_evidence.zip"
+    zip_path = jobs.get_job_dir(job_id) / f"{job_id}_evidence.zip"
     with zipfile.ZipFile(zip_path, 'w') as zf:
         for f in evidence_dir.iterdir():
             zf.write(f, f.name)
@@ -242,7 +242,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=7880)
+    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
     print(f"[Day08] 智能内容审核工作台启动: http://{args.host}:{args.port}")
-    app.run(host=args.host, port=args.port, debug=True)
+    app.run(host=args.host, port=args.port, debug=args.debug, use_reloader=False)

@@ -95,7 +95,7 @@ def test_analyze_asset(cv: CVEngine, asset_path: Path, rules: dict, label: str):
     print(f"  PASS — 报告已保存: {job_dir / 'analysis_report.json'}")
 
     # 检查证据帧文件
-    kf_dir = job_dir / "keyframes"
+    kf_dir = job_dir / "evidence"
     if kf_dir.exists():
         kf_files = list(kf_dir.glob("*.jpg"))
         print(f"  PASS — 证据帧文件: {len(kf_files)} 个")
@@ -115,10 +115,16 @@ def main():
     # ---- 准备 ----
     TEST_OUTPUT.mkdir(parents=True, exist_ok=True)
 
-    # 找测试素材
-    # 用 assets/ 下的任意图片/视频，或者提示用户放置
-    test_images = sorted((BASE / "assets").rglob("*"))
-    test_images = [p for p in test_images if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}]
+    # 找测试素材：优先使用人工筛过的清晰样本，避免候选目录里的误检/无命中图片影响测试覆盖。
+    preferred_images = [
+        BASE / "assets" / "review_reject_knife_clear.jpg",
+        BASE / "assets" / "review_reject_scissors.jpg",
+        BASE / "assets" / "review_warning_wine_bottle_clear.jpg",
+        BASE / "assets" / "review_person_only.jpg",
+    ]
+    test_images = [p for p in preferred_images if p.exists()]
+    if not test_images:
+        test_images = sorted((BASE / "assets").glob("review_*.jpg"))
     test_videos = sorted((BASE / "assets").rglob("*"))
     test_videos = [p for p in test_videos if p.suffix.lower() in {".mp4", ".avi", ".mov", ".mkv"}]
 

@@ -19,15 +19,20 @@ class CVEngine:
     """封装 YOLO 模型加载、推理、审核规则评估、证据帧保存"""
 
     # ---- 颜色常量 ----
-    COLOR_RISK = (0, 0, 255)       # 红 — 高风险
-    COLOR_WARNING = (0, 215, 255)  # 黄 — 提醒
-    COLOR_NORMAL = (0, 255, 0)     # 绿 — 其他
+    COLOR_RISK = (0, 0, 255)       # 红 - 高风险
+    COLOR_WARNING = (0, 215, 255)  # 黄 - 提醒
+    COLOR_NORMAL = (0, 255, 0)     # 绿 - 其他
+    SECONDARY_ALLOWED_CLASSES = {"gun", "weapon", "rifle"}
 
     def __init__(self, model_path: Path):
         self.model_path = Path(model_path)
-        self.model_name = self.model_path.name
         self._model: Optional[YOLO] = None
+        self._models: list[tuple[str, YOLO]] = []
+        self.model_names: list[str] = []
+        self.extra_model_errors: list[str] = []
         self.load_error: Optional[str] = None
+        self.secondary_model_path = self.model_path.with_name("custom_gun.pt")
+        self.model_name = self.model_path.name
 
         if not self.model_path.exists():
             self.load_error = f"模型文件不存在: {self.model_path}"
@@ -35,8 +40,23 @@ class CVEngine:
 
         try:
             self._model = YOLO(str(self.model_path))
+            self._models.append((self.model_path.name, self._model))
+            self.model_names.append(self.model_path.name)
         except Exception as exc:
             self.load_error = f"模型加载失败: {exc}"
+            return
+
+        if self.secondary_model_path.exists():
+            try:
+                extra_model = YOLO(str(self.secondary_model_path))
+                self._models.append((self.secondary_model_path.name, extra_model))
+                self.model_names.append(self.secondary_model_path.name)
+            except Exception as exc:
+                self.extra_model_errors.append(
+                    f"{self.secondary_model_path.name} 加载失败: {exc}"
+                )
+
+        self.model_name = " + ".join(self.model_names) if self.model_names else self.model_path.name
 
     # ==================== 公共 API ====================
 
@@ -199,8 +219,9 @@ class CVEngine:
         """
         asset_path = Path(asset_path)
         job_dir = Path(job_dir)
-        keyframes_dir = job_dir / "keyframes"
-        keyframes_dir.mkdir(parents=True, exist_ok=True)
+        evidence_dir = job_dir / "evidence"
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+        sampled_frames_dir = job_dir / "sampled_frames"
 
         suffix = asset_path.suffix.lower()
         image_exts = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
@@ -209,12 +230,20 @@ class CVEngine:
         if suffix in image_exts:
             media_type = "image"
             interval = None
-            framed = self._analyze_image(asset_path, keyframes_dir, rules)
+            framed = self._analyze_image(asset_path, evidence_dir, rules)
         elif suffix in video_exts:
             media_type = "video"
-            interval = float(rules.get("video_sample_interval_sec", 1.0))
+            interval = float(rules.get("video_sample_interval_sec", 0.5))
             max_frames = int(rules.get("max_sample_frames", 120))
-            framed = self._analyze_video(asset_path, keyframes_dir, rules, interval, max_frames)
+            sampled_frames_dir.mkdir(parents=True, exist_ok=True)
+            framed = self._analyze_video(
+                asset_path,
+                evidence_dir,
+                sampled_frames_dir,
+                rules,
+                interval,
+                max_frames,
+            )
         else:
             raise ValueError(f"格式不支持: {suffix}")
 
@@ -235,6 +264,7 @@ class CVEngine:
             "review": {
                 "machine_conclusion": rule_result["conclusion"],
                 "machine_conclusion_text": rule_result["conclusion_text"],
+                "reason": rule_result["reason"],
                 "manual_conclusion": None,
                 "reviewer": "",
                 "note": "",
@@ -296,9 +326,27 @@ class CVEngine:
         cv2.imwrite(str(output_path), image)
         return str(output_path)
 
+    def draw_boxes(
+        self,
+        image_path: Path,
+        detections: list[dict],
+        output_path: Path,
+        rules: Optional[dict] = None,
+    ) -> str:
+        """兼容旧后端调用：读取图片后绘制检测框。"""
+        image_path = Path(image_path)
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        img = cv2.imread(str(image_path))
+        if img is None:
+            raise ValueError(f"图片读取失败或文件损坏: {image_path}")
+
+        return self.draw_evidence(img, detections, output_path, rules)
+
     # ==================== 内部方法 ====================
 
-    def _analyze_image(self, image_path: Path, keyframes_dir: Path, rules: dict) -> list[dict]:
+    def _analyze_image(self, image_path: Path, evidence_dir: Path, rules: dict) -> list[dict]:
         """图片审核：读取 → 检测 → 保存证据"""
         img = cv2.imread(str(image_path))
         if img is None:
@@ -308,8 +356,8 @@ class CVEngine:
 
         evidence_rel = ""
         if self._should_save_evidence(detections, rules):
-            evidence_rel = "keyframes/image_evidence.jpg"
-            self.draw_evidence(img.copy(), detections, keyframes_dir / "image_evidence.jpg", rules)
+            evidence_rel = "evidence/image_evidence.jpg"
+            self.draw_evidence(img.copy(), detections, evidence_dir / "image_evidence.jpg", rules)
 
         return [{
             "frame_index": 0,
@@ -321,12 +369,13 @@ class CVEngine:
     def _analyze_video(
         self,
         video_path: Path,
-        keyframes_dir: Path,
+        evidence_dir: Path,
+        sampled_frames_dir: Path,
         rules: dict,
         interval_sec: float,
         max_frames: int,
     ) -> list[dict]:
-        """视频审核：打开 → 逐采样帧检测 → 选择性保存证据"""
+        """视频审核：打开 → 保存采样帧 → 逐采样帧检测 → 选择性保存证据"""
         cap = cv2.VideoCapture(str(video_path))
         if not cap.isOpened():
             raise ValueError(f"视频读取失败或格式不支持: {video_path}")
@@ -358,6 +407,8 @@ class CVEngine:
 
                 time_sec = round(frame_idx / fps, 2)
                 detections = self._run_yolo(frame)
+                sampled_rel = f"sampled_frames/frame_{frame_idx:06d}.jpg"
+                cv2.imwrite(str(sampled_frames_dir / f"frame_{frame_idx:06d}.jpg"), frame)
 
                 evidence_rel = ""
                 if evidence_count < max_evidence:
@@ -365,18 +416,18 @@ class CVEngine:
                         cls = d.get("class_name", "")
                         conf = float(d.get("confidence", 0))
                         if cls in risk_classes and conf >= review_conf:
-                            evidence_rel = f"keyframes/frame_{frame_idx:06d}.jpg"
+                            evidence_rel = f"evidence/frame_{frame_idx:06d}.jpg"
                             self.draw_evidence(
                                 frame.copy(), detections,
-                                keyframes_dir / f"frame_{frame_idx:06d}.jpg", rules,
+                                evidence_dir / f"frame_{frame_idx:06d}.jpg", rules,
                             )
                             evidence_count += 1
                             break
                         elif cls in warning_classes and conf >= review_conf:
-                            evidence_rel = f"keyframes/frame_{frame_idx:06d}.jpg"
+                            evidence_rel = f"evidence/frame_{frame_idx:06d}.jpg"
                             self.draw_evidence(
                                 frame.copy(), detections,
-                                keyframes_dir / f"frame_{frame_idx:06d}.jpg", rules,
+                                evidence_dir / f"frame_{frame_idx:06d}.jpg", rules,
                             )
                             evidence_count += 1
                             break
@@ -384,6 +435,7 @@ class CVEngine:
                 framed.append({
                     "frame_index": frame_idx,
                     "time_sec": time_sec,
+                    "sampled_image": sampled_rel,
                     "detections": detections,
                     "evidence_image": evidence_rel,
                 })
@@ -396,27 +448,67 @@ class CVEngine:
         if not framed:
             raise RuntimeError("视频没有可分析帧")
 
+        # 确保证据帧不低于 min_evidence_frames（用最高置信度检测帧补齐）
+        min_ev = int(rules.get("min_evidence_frames", 1))
+        if evidence_count < min_ev and framed:
+            # 从未保存证据的帧中按最高置信度排序补录
+            candidates = []
+            for f in framed:
+                if f["evidence_image"]:
+                    continue
+                best_conf = max(
+                    (float(d.get("confidence", 0)) for d in f["detections"]),
+                    default=0,
+                )
+                if best_conf > 0:
+                    candidates.append((best_conf, f))
+            candidates.sort(key=lambda x: x[0], reverse=True)
+
+            cap2 = cv2.VideoCapture(str(video_path))
+            for _, f_item in candidates:
+                if evidence_count >= min_ev:
+                    break
+                fi = f_item["frame_index"]
+                cap2.set(cv2.CAP_PROP_POS_FRAMES, fi)
+                ok, frame = cap2.read()
+                if not ok:
+                    continue
+                f_item["evidence_image"] = f"evidence/frame_{fi:06d}.jpg"
+                self.draw_evidence(
+                    frame, f_item["detections"],
+                    evidence_dir / f"frame_{fi:06d}.jpg", rules,
+                )
+                evidence_count += 1
+            cap2.release()
+
         return framed
 
     def _run_yolo(self, image: np.ndarray) -> list[dict]:
         """单次 YOLO 推理"""
-        if not self._model:
+        if not self._models:
             raise RuntimeError(self.load_error or "模型未加载")
 
-        results = self._model(image, verbose=False)
         detections: list[dict] = []
 
-        for result in results:
-            boxes = result.boxes
-            if boxes is None:
-                continue
-            for i in range(len(boxes)):
-                detections.append({
-                    "class_id": int(boxes.cls[i].item()),
-                    "class_name": self._model.names.get(int(boxes.cls[i].item()), "unknown"),
-                    "confidence": round(float(boxes.conf[i].item()), 4),
-                    "bbox": [int(round(v)) for v in boxes.xyxy[i].tolist()],
-                })
+        for model_name, model in self._models:
+            results = model(image, verbose=False)
+            for result in results:
+                boxes = result.boxes
+                if boxes is None:
+                    continue
+                for i in range(len(boxes)):
+                    class_id = int(boxes.cls[i].item())
+                    class_name = model.names.get(class_id, "unknown")
+                    if model_name == self.secondary_model_path.name:
+                        if class_name.lower() not in self.SECONDARY_ALLOWED_CLASSES:
+                            continue
+                    detections.append({
+                        "class_id": class_id,
+                        "class_name": class_name,
+                        "confidence": round(float(boxes.conf[i].item()), 4),
+                        "bbox": [int(round(v)) for v in boxes.xyxy[i].tolist()],
+                        "source_model": model_name,
+                    })
 
         return detections
 

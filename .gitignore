@@ -6,11 +6,17 @@ __pycache__/
 venv/
 .env
 *.pt
+!models/*.pt
 !models/.gitkeep
 outputs/*
 !outputs/.gitkeep
+uploads/*
+!uploads/.gitkeep
 assets/uploads/*
 !assets/uploads/.gitkeep
+data/gun_raw/
+data/gun_yolo/
+runs/
 .DS_Store
 Thumbs.db
 *.tmp
