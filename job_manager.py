@@ -1,4 +1,6 @@
 """任务管理器 — 任务 CRUD + JSON 持久化 + 状态机"""
+from __future__ import annotations
+
 import json
 import uuid
 from datetime import datetime

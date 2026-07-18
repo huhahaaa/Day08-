@@ -4,5 +4,7 @@
   "reject_confidence": 0.60,
   "review_confidence": 0.35,
   "min_evidence_frames": 1,
-  "video_sample_interval_sec": 1.0
+  "max_evidence_frames": 10,
+  "video_sample_interval_sec": 1.0,
+  "max_sample_frames": 120
 }
